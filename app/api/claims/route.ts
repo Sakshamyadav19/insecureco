@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
 import { randomUUID } from "crypto";
-
-const DATA_DIR = join(process.cwd(), "data");
-const CLAIMS_FILE = join(DATA_DIR, "claims.json");
-
-function readClaims(): { claims: Record<string, unknown>[] } {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  if (!existsSync(CLAIMS_FILE)) {
-    const init = { claims: [] };
-    writeFileSync(CLAIMS_FILE, JSON.stringify(init, null, 2));
-    return init;
-  }
-  return JSON.parse(readFileSync(CLAIMS_FILE, "utf-8"));
-}
-
-function writeClaims(data: { claims: Record<string, unknown>[] }) {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(CLAIMS_FILE, JSON.stringify(data, null, 2));
-}
+import { readClaims, writeClaims, type Claim } from "@/lib/storage";
 
 function generateConfirmationNumber(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -31,7 +12,7 @@ function generateConfirmationNumber(): string {
 }
 
 export async function GET() {
-  const data = readClaims();
+  const data = await readClaims();
   return NextResponse.json(data);
 }
 
@@ -60,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const newClaim = {
+  const newClaim: Claim = {
     id: randomUUID(),
     confirmation_number: generateConfirmationNumber(),
     status: "under_review",
@@ -77,11 +58,12 @@ export async function POST(req: NextRequest) {
     airbag_deployed: !!airbag_deployed,
     warning_lights: !!warning_lights,
     drivability: drivability ?? "unknown",
+    evidence: [],
   };
 
-  const data = readClaims();
+  const data = await readClaims();
   data.claims.push(newClaim);
-  writeClaims(data);
+  await writeClaims(data);
 
   return NextResponse.json(
     { id: newClaim.id, confirmation_number: newClaim.confirmation_number },

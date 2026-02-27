@@ -1,0 +1,77 @@
+/**
+ * Storage abstraction: Vercel KV in production, local filesystem in dev.
+ * Falls back to FS when KV_REST_API_URL is not set.
+ */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { join } from "path";
+
+const DATA_DIR = join(process.cwd(), "data");
+const CLAIMS_FILE = join(DATA_DIR, "claims.json");
+
+export type Claim = {
+  id: string;
+  confirmation_number: string;
+  status: "under_review" | "approved" | "denied";
+  submitted_at: string;
+  policyholder_name: string;
+  policyholder_email: string;
+  policyholder_phone: string;
+  incident_date: string;
+  vehicle_info: string;
+  incident_type: string;
+  damage_description: string;
+  vin_visible: boolean;
+  plate_visible: boolean;
+  airbag_deployed: boolean;
+  warning_lights: boolean;
+  drivability: string;
+  evidence: Array<{ url: string; label: string; added_at: string }>;
+};
+
+type ClaimsStore = { claims: Claim[] };
+
+function useKV(): boolean {
+  return !!process.env.KV_REST_API_URL;
+}
+
+// ---- Filesystem helpers (local dev) ----
+
+function fsRead(): ClaimsStore {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  if (!existsSync(CLAIMS_FILE)) {
+    const init: ClaimsStore = { claims: [] };
+    writeFileSync(CLAIMS_FILE, JSON.stringify(init, null, 2));
+    return init;
+  }
+  return JSON.parse(readFileSync(CLAIMS_FILE, "utf-8"));
+}
+
+function fsWrite(data: ClaimsStore): void {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  writeFileSync(CLAIMS_FILE, JSON.stringify(data, null, 2));
+}
+
+// ---- KV helpers (Vercel production) ----
+
+async function kvRead(): Promise<ClaimsStore> {
+  const { kv } = await import("@vercel/kv");
+  const data = await kv.get<ClaimsStore>("claims");
+  return data ?? { claims: [] };
+}
+
+async function kvWrite(data: ClaimsStore): Promise<void> {
+  const { kv } = await import("@vercel/kv");
+  await kv.set("claims", data);
+}
+
+// ---- Public API ----
+
+export async function readClaims(): Promise<ClaimsStore> {
+  if (useKV()) return kvRead();
+  return fsRead();
+}
+
+export async function writeClaims(data: ClaimsStore): Promise<void> {
+  if (useKV()) return kvWrite(data);
+  fsWrite(data);
+}

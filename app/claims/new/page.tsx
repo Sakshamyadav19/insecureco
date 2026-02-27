@@ -41,6 +41,11 @@ export default function NewClaimPage() {
     drivability: "yes",
   });
 
+  // Evidence clips state
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [evidenceLabel, setEvidenceLabel] = useState("");
+  const [evidenceList, setEvidenceList] = useState<Array<{ url: string; label: string }>>([]);
+
   useEffect(() => {
     fetch("/api/auth/session")
       .then((r) => r.json())
@@ -52,23 +57,42 @@ export default function NewClaimPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function addEvidence() {
+    if (!evidenceUrl.trim()) return;
+    setEvidenceList((prev) => [...prev, { url: evidenceUrl.trim(), label: evidenceLabel.trim() || "EVIDENCE" }]);
+    setEvidenceUrl("");
+    setEvidenceLabel("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
+      // 1. Create the claim
       const res = await fetch("/api/claims", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/claims/${data.id}/confirmation`);
-      } else {
+      if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Failed to submit claim");
+        return;
       }
+      const data = await res.json();
+      const claimId = data.id;
+
+      // 2. Upload each evidence URL
+      for (const ev of evidenceList) {
+        await fetch(`/api/claims/${claimId}/evidence`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: ev.url, label: ev.label }),
+        }).catch(() => null); // best-effort
+      }
+
+      router.push(`/claims/${claimId}/confirmation`);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -264,6 +288,98 @@ export default function NewClaimPage() {
               <option value="unknown">Unknown</option>
             </select>
           </div>
+        </div>
+
+        {/* Evidence Clips */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "12px",
+          padding: "1.5rem",
+          marginBottom: "1rem",
+        }}>
+          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "#111827", marginBottom: "4px" }}>
+            Evidence Clips <span style={{ fontSize: "12px", fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+          </h2>
+          <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "1rem" }}>
+            Add Reka clip URLs as damage proof.
+          </p>
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <input
+              id="evidence-url-input"
+              type="url"
+              value={evidenceUrl}
+              onChange={(e) => setEvidenceUrl(e.target.value)}
+              placeholder="Reka clip URL (https://...)"
+              style={{ ...inputStyle, flex: 2 }}
+            />
+            <input
+              id="evidence-label-input"
+              type="text"
+              value={evidenceLabel}
+              onChange={(e) => setEvidenceLabel(e.target.value)}
+              placeholder="e.g. DAMAGE"
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <button
+              id="add-evidence-btn"
+              type="button"
+              onClick={addEvidence}
+              disabled={!evidenceUrl.trim()}
+              style={{
+                padding: "9px 14px",
+                background: evidenceUrl.trim() ? "#00b4d8" : "#e5e7eb",
+                color: evidenceUrl.trim() ? "#fff" : "#9ca3af",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: evidenceUrl.trim() ? "pointer" : "not-allowed",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Add Evidence
+            </button>
+          </div>
+
+          {evidenceList.length > 0 && (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+              {evidenceList.map((ev, i) => (
+                <li key={i} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 10px",
+                  background: "#f9fafb",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e7eb",
+                }}>
+                  <span style={{
+                    padding: "2px 8px",
+                    background: "#dbeafe",
+                    color: "#1d4ed8",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}>
+                    {ev.label}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {ev.url}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEvidenceList((prev) => prev.filter((_, j) => j !== i))}
+                    style={{ marginLeft: "auto", background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "14px", flexShrink: 0 }}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {error && (

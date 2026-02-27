@@ -155,7 +155,6 @@ export default function NewClaimPage() {
                 type="text"
                 value={form.policyholder_name}
                 onChange={(e) => set("policyholder_name", e.target.value)}
-                required
                 placeholder="Demo User"
                 style={inputStyle}
               />
@@ -164,10 +163,9 @@ export default function NewClaimPage() {
               <label htmlFor="policyholder-email" style={labelStyle}>Email</label>
               <input
                 id="policyholder-email"
-                type="email"
+                type="text"
                 value={form.policyholder_email}
                 onChange={(e) => set("policyholder_email", e.target.value)}
-                required
                 placeholder="claims@swiftsettle.com"
                 style={inputStyle}
               />
@@ -202,10 +200,10 @@ export default function NewClaimPage() {
               <label htmlFor="incident-date" style={labelStyle}>Incident Date</label>
               <input
                 id="incident-date"
-                type="date"
+                type="text"
                 value={form.incident_date}
+                placeholder="YYYY-MM-DD or MM/DD/YYYY"
                 onChange={(e) => set("incident_date", e.target.value)}
-                required
                 style={inputStyle}
               />
             </div>
@@ -216,7 +214,6 @@ export default function NewClaimPage() {
                 type="text"
                 value={form.vehicle_info}
                 onChange={(e) => set("vehicle_info", e.target.value)}
-                required
                 placeholder="Toyota Camry 2019"
                 style={inputStyle}
               />
@@ -245,7 +242,6 @@ export default function NewClaimPage() {
                 id="damage-description"
                 value={form.damage_description}
                 onChange={(e) => set("damage_description", e.target.value)}
-                required
                 rows={4}
                 placeholder="Describe the damage in detail..."
                 style={{ ...inputStyle, resize: "vertical" }}

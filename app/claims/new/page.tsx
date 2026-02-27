@@ -64,16 +64,42 @@ export default function NewClaimPage() {
     setEvidenceLabel("");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
+
+    // Read directly from DOM so values set by Yutori browser automation are captured
+    const el = e.currentTarget;
+    const val = (id: string) => (el.querySelector(`#${id}`) as HTMLInputElement | null)?.value ?? "";
+    const checked = (id: string) => (el.querySelector(`#${id}`) as HTMLInputElement | null)?.checked ?? false;
+    const domForm = {
+      policyholder_name: val("policyholder-name") || form.policyholder_name,
+      policyholder_email: val("policyholder-email") || form.policyholder_email,
+      policyholder_phone: val("policyholder-phone") || form.policyholder_phone,
+      incident_date: val("incident-date") || form.incident_date,
+      vehicle_info: val("vehicle-info") || form.vehicle_info,
+      incident_type: val("incident-type") || form.incident_type,
+      damage_description: val("damage-description") || form.damage_description,
+      vin_visible: checked("vin-visible"),
+      plate_visible: checked("plate-visible"),
+      airbag_deployed: checked("airbag-deployed"),
+      warning_lights: checked("warning-lights"),
+      drivability: val("drivability") || form.drivability,
+    };
+
+    if (!domForm.policyholder_name || !domForm.policyholder_email || !domForm.incident_date || !domForm.vehicle_info || !domForm.damage_description) {
+      setError("Please fill in all required fields.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       // 1. Create the claim
       const res = await fetch("/api/claims", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(domForm),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -109,7 +135,7 @@ export default function NewClaimPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {/* Policyholder Info */}
         <div style={{
           background: "#fff",

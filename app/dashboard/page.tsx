@@ -164,14 +164,20 @@ export default function DashboardPage() {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-                    <span style={{
-                      fontFamily: "monospace",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "#111827",
-                    }}>
+                    <a
+                      href={`/claims/${claim.id}`}
+                      style={{
+                        fontFamily: "monospace",
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        color: "#111827",
+                        textDecoration: "none",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                    >
                       {claim.confirmation_number}
-                    </span>
+                    </a>
                     <span style={{
                       padding: "2px 8px",
                       borderRadius: "99px",

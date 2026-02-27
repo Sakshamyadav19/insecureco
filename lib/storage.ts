@@ -5,7 +5,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const DATA_DIR = join(process.cwd(), "data");
+const DATA_DIR = process.env.VERCEL
+  ? "/tmp/insurance-portal-data"
+  : join(process.cwd(), "data");
 const CLAIMS_FILE = join(DATA_DIR, "claims.json");
 
 export type Claim = {
@@ -37,13 +39,17 @@ function useKV(): boolean {
 // ---- Filesystem helpers (local dev) ----
 
 function fsRead(): ClaimsStore {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  if (!existsSync(CLAIMS_FILE)) {
-    const init: ClaimsStore = { claims: [] };
-    writeFileSync(CLAIMS_FILE, JSON.stringify(init, null, 2));
-    return init;
+  try {
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+    if (!existsSync(CLAIMS_FILE)) {
+      const init: ClaimsStore = { claims: [] };
+      writeFileSync(CLAIMS_FILE, JSON.stringify(init, null, 2));
+      return init;
+    }
+    return JSON.parse(readFileSync(CLAIMS_FILE, "utf-8"));
+  } catch {
+    return { claims: [] };
   }
-  return JSON.parse(readFileSync(CLAIMS_FILE, "utf-8"));
 }
 
 function fsWrite(data: ClaimsStore): void {

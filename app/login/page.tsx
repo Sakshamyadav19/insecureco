@@ -10,15 +10,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    // Read from DOM so values set by browser automation are captured
+    const el = e.currentTarget;
+    const domEmail = (el.querySelector("#email") as HTMLInputElement | null)?.value || email;
+    const domPassword = (el.querySelector("#password") as HTMLInputElement | null)?.value || password;
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: domEmail, password: domPassword }),
       });
       if (res.ok) {
         router.push("/dashboard");
@@ -71,17 +75,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
             <label htmlFor="email" style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#374151", marginBottom: "6px" }}>
               Email address
             </label>
             <input
               id="email"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               placeholder="demo@insureco.com"
               style={{
                 width: "100%",
@@ -104,7 +107,6 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               placeholder="••••••••"
               style={{
                 width: "100%",

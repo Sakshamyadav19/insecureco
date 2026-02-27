@@ -33,7 +33,7 @@ export type Claim = {
 type ClaimsStore = { claims: Claim[] };
 
 function useKV(): boolean {
-  return !!process.env.KV_REST_API_URL;
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 }
 
 // ---- Filesystem helpers (local dev) ----
@@ -57,17 +57,33 @@ function fsWrite(data: ClaimsStore): void {
   writeFileSync(CLAIMS_FILE, JSON.stringify(data, null, 2));
 }
 
-// ---- KV helpers (Vercel production) ----
+// ---- KV helpers (Upstash REST API — no npm package needed) ----
 
 async function kvRead(): Promise<ClaimsStore> {
-  const { kv } = await import("@vercel/kv");
-  const data = await kv.get<ClaimsStore>("claims");
-  return data ?? { claims: [] };
+  const url = process.env.KV_REST_API_URL!;
+  const token = process.env.KV_REST_API_TOKEN!;
+  try {
+    const resp = await fetch(`${url}/get/claims`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!resp.ok) return { claims: [] };
+    const json = await resp.json();
+    if (!json.result) return { claims: [] };
+    return JSON.parse(json.result) as ClaimsStore;
+  } catch {
+    return { claims: [] };
+  }
 }
 
 async function kvWrite(data: ClaimsStore): Promise<void> {
-  const { kv } = await import("@vercel/kv");
-  await kv.set("claims", data);
+  const url = process.env.KV_REST_API_URL!;
+  const token = process.env.KV_REST_API_TOKEN!;
+  await fetch(`${url}/set/claims`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" },
+    body: JSON.stringify(data),
+  });
 }
 
 // ---- Public API ----
